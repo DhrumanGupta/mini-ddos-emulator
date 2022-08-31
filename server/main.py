@@ -1,11 +1,16 @@
 import time
 from flask import Flask, request
-import json
 from pandas import DataFrame as df
+import os
 
 app = Flask(__name__)
 
 data = df(columns=['ip', 'endpoint', 'method', 'body', 'headers', 'time'])
+i = 0
+filename = f"data_{i}.csv"
+while os.path.exists(filename):
+    i += 1
+    filename = f"data_{i}.csv"
 
 @app.before_request
 def log_request_info():
@@ -20,7 +25,7 @@ def log_request_info():
     #     "time": time.time()
     # }))
     if len(data) % 100 == 0:
-        data.to_csv('data.csv', index=False)
+        data.to_csv(filename, index=False)
     # app.logger.debug('Body: %s', request.get_data())
 
 @app.route('/')

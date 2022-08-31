@@ -33,4 +33,4 @@ def malicous():
         make_request_to_endpoint(random.choice(endpoints))
     return 'Hello world!'
 
-app.run()
+app.run(host="0.0.0.0", port=80)

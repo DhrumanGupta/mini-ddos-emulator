@@ -26,4 +26,3 @@ def make_linode(region):
     initialize_client()
     linode, password = _client.linode.instance_create("g6-nanode-1", region, image="linode/debian11")
     return linode, password
-    
