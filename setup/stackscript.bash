@@ -30,7 +30,7 @@ echo "SERVER_IP_ADDRESS=${SERVER_IP_ADDRESS}" > ./client/.env
 
 systemctl daemon-reload
 
-systemctl
+systemctl start ddos-emulator.service
 
 
 
