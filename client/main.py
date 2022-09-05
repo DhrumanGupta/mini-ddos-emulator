@@ -33,4 +33,8 @@ def malicous():
         make_request_to_endpoint(random.choice(endpoints))
     return 'Hello world!'
 
+@app.route('/')
+def index():
+    return 'pong'
+
 app.run(host="0.0.0.0", port=80)
