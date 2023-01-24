@@ -18,10 +18,10 @@ def get_url(endpoint):
     return f"http://{os.getenv('SERVER_IP_ADDRESS')}{endpoint}"
 
 
-def make_request_to_endpoint(endpoint):
+def make_request_to_endpoint(endpoint, data):
     url = get_url(endpoint)
     print(f"Making request to {url}")
-    requests.get(url)
+    requests.post(url, json=data)
 
 user_thread: threading.Thread = None
 user_running = False
@@ -35,7 +35,7 @@ def run_user(timetorun):
     while start + timetorun > time.time():
         if not user_running:
             break
-        make_request_to_endpoint(random.choice(user_endpoints))
+        make_request_to_endpoint(random.choice(user_endpoints), {"compromised": False})
         sleep(random.uniform(3, 5))
     user_running = False
 
@@ -45,7 +45,7 @@ def run_malicious(timetorun):
     while start + timetorun > time.time():
         if not malicious_running:
             break
-        make_request_to_endpoint(random.choice(malicious_endpoints))
+        make_request_to_endpoint(random.choice(malicious_endpoints), {"compromised": True})
     malicious_running = False
 
 @app.route('/emulate-user')
@@ -56,7 +56,7 @@ def normal():
     if timetorun <= 1:
         return "Invalid time"
 
-    if user_thread:
+    if user_running:
         return "User already running"
     
     user_running = True
@@ -70,7 +70,7 @@ def normal():
 @app.route('/stop-user')
 def stop_user():
     global user_thread, user_running
-    if user_thread:
+    if user_running:
         user_running = False
         user_thread.join()
         del user_thread
@@ -88,7 +88,7 @@ def malicous():
     if timetorun <= 1:
         return "Invalid time"
 
-    if malicious_thread:
+    if malicious_running:
         return "malicious already running"
     
     malicious_running = True
@@ -100,12 +100,12 @@ def malicous():
 @app.route('/stop-malicious-user')
 def stop_malicious():
     global malicious_thread, malicious_running
-    if malicious_thread:
+    if malicious_running:
         malicious_running = False
         malicious_thread.join()
         del malicious_thread
         malicious_thread = None
-        return "User stopped"
+        return "Malicious stopped"
     else:
         return "No malicious user running"
 
@@ -114,4 +114,4 @@ def stop_malicious():
 def index():
     return 'pong'
 
-app.run(host="0.0.0.0", port=80)
+app.run(host="0.0.0.0", port=5000)

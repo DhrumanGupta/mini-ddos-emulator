@@ -9,7 +9,7 @@ from queue import Queue
 app = Flask(__name__)
 data_queue = Queue()
 
-columns = ['ip', 'endpoint', 'packet_size', 'headers', 'time', 'time_taken']
+columns = ['ip', 'endpoint', 'packet_size', 'headers', 'time', 'time_taken', 'compromised']
 data = pd.DataFrame(columns=columns)
 i = 0
 filename = f"data_{i}.csv"
@@ -62,35 +62,38 @@ def log_request_info():
 
     req_data = route_data[request.path]
 
+    compromised = request.get_json()["compromised"]
+
+
     packet_size = random.randint(req_data["packet_size"][0], req_data["packet_size"][1])
     time_taken = random.uniform(req_data["time_taken"][0], req_data["time_taken"][1])
 
-    data_queue.put([request.remote_addr, request.path, packet_size, request.headers, time.time(), time_taken])
+    data_queue.put([request.remote_addr, request.path, packet_size, request.headers, time.time(), time_taken, compromised])
     if len(data) % 100 == 0:
         data.to_csv(filename, index=False)
     # app.logger.debug('Body: %s', request.get_data())
 
-@app.route('/')
+@app.route('/', methods=['POST'])
 def hello_world():
     return 'Hello world!'
 
-@app.route('/endpoint-1')
+@app.route('/endpoint-1', methods=['POST'])
 def hello_world_1():
     return 'Hello world!'
 
-@app.route('/endpoint-2')
+@app.route('/endpoint-2', methods=['POST'])
 def hello_world_2():
     return 'Hello world!'
 
-@app.route('/endpoint-3')
+@app.route('/endpoint-3', methods=['POST'])
 def hello_world_3():
     return 'Hello world!'
 
-@app.route('/endpoint-4')
+@app.route('/endpoint-4', methods=['POST'])
 def hello_world_4():
     return 'Hello world!'
 
-@app.route('/endpoint-5')
+@app.route('/endpoint-5', methods=['POST'])
 def hello_world_5():
     return 'Hello world!'
 
@@ -109,9 +112,10 @@ def save_logs():
                 continue
 
         res_df = pd.DataFrame.from_records(res, columns=columns)
-        data = pd.concat([data, res_df])
-        # print(data)
-        data.to_csv(filename, index=False)
+        if len(res_df) > 0:
+            data = pd.concat([data, res_df])
+            # print(data)
+            data.to_csv(filename, index=False)
 
 if __name__ == "__main__":
     import threading
