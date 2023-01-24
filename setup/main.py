@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import random
 from time import sleep
 import dotenv
@@ -7,11 +7,15 @@ import os
 import pandas as pd
 from sys import argv
 import requests
+import digital_ocean
+from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
+
 
 csv_path = 'linodes_data.csv'
 
 def debug(msg):
-    print(f"{datetime.now().strftime('%H:%M:%S')} * {msg}")
+    print(f"{datetime.now().strftime('%H:%M:%S')} {msg}")
 
 def delete():
     linodes = linode_api.get_linodes_raw()
@@ -19,8 +23,10 @@ def delete():
     for linode in linodes:
         linode.delete()
 
+    digital_ocean.delete_all()
 
-def create(n=35):
+
+def create():
     # print("x")
     regions = linode_api.get_regions()
     print(f"[INFO]: Found {len(regions)} regions")
@@ -29,34 +35,71 @@ def create(n=35):
     print(f"[INFO]: {len(linodes)} linodes are running")
 
     new_linodes = []
-    if len(linodes) <= 0:
-        for i in range(n):
-            lin, pwd = linode_api.make_linode(regions[i % len(regions)], 1059469, {"SERVER_IP_ADDRESS": os.getenv('SERVER_IP')})
-            new_linodes.append([lin.id, pwd])
+    if len(linodes) > 0:
+        debug("Linodes already exist.")
+        return
 
-        print(new_linodes)
+    for i in range(1):
+        lin, pwd = linode_api.make_linode(regions[i % len(regions)], 1059469, {"SERVER_IP_ADDRESS": os.getenv('SERVER_IP')})
+        new_linodes.append([lin.id, pwd])
 
-        linodes = linode_api.get_linodes()
-        for i in range(len(new_linodes)):
-            id = new_linodes[i][0]
-            for linode in linodes:
-                if linode['id'] == id:
-                    new_linodes[i].append(linode['ip'])
-                    break
+    linodes = linode_api.get_linodes()
+    for i in range(len(new_linodes)):
+        id = new_linodes[i][0]
+        for linode in linodes:
+            if linode['id'] == id:
+                new_linodes[i].append(linode['ip'])
+                break
+    
+    do_regions = digital_ocean.get_regions()
 
-        df = pd.DataFrame(new_linodes, columns=['Id', 'Password', 'IP'])
-        df.to_csv(csv_path, index=False)
+
+    def run_concurrent(func, args):
+        e = ThreadPoolExecutor(max_workers=15)
+        final_res = []
+        futures = [e.submit(func, *arg) for arg in args]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                res = future.result()
+                if res:
+                    final_res.append(res)
+            except Exception as e:
+                print(f"[ERROR] {e}")
+
+        return final_res
+
+    args = []
+
+    for i in range(1):
+        args.append((do_regions[i % len(do_regions)], f"Machine-{i}"))
+        # res = digital_ocean.create(region=do_regions[i % len(do_regions)], name=f"Example-{i}")
+        # print(res)
+
+    res = run_concurrent(digital_ocean.create, args)
+    new_linodes += res
+
+
+    
+    df = pd.DataFrame(new_linodes, columns=['Id', 'Password', 'IP'])
+    df.to_csv(csv_path, index=False)
     
     # print(linode.get_linodes())
 
 def run():
     data = pd.read_csv(csv_path)
+    seconds_before_attack = random.randint(5*60, 6*60) # 5-6 minutes
+    attack_duration_seconds = random.randint(5*60, 7*60) # 5-7 minutes
+
+    print(f"http://{data.iloc[0]['IP']}/emulate-user?time={seconds_before_attack*1000}")
+    
+    requests.get(f"http://{data.iloc[0]['IP']}/emulate-user?time={seconds_before_attack*1000}")
+    requests.get(f"http://{data.iloc[1]['IP']}/emulate-malicious-user?time=5")
+
+
     if len(data) != 35:
         debug(f"[ERROR]: Expected 35 linodes, found {len(data)}")
         return
     
-    seconds_before_attack = random.randint(5*60, 6*60) # 5-6 minutes
-    attack_duration_seconds = random.randint(5*60, 7*60) # 5-7 minutes
     
     real_clients = []
     compromised_clients = []

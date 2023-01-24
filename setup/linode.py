@@ -7,7 +7,7 @@ def initialize_client():
     global _client
     if _client:
         return
-    _client = LinodeClient(os.getenv("TOKEN"))
+    _client = LinodeClient(os.getenv("LINODE_TOKEN"))
 
 
 def get_regions():
