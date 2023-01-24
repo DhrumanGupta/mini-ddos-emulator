@@ -57,6 +57,9 @@ def log_request_info():
     #     "time": time.time()
     # }))
 
+    if request.path not in route_data.keys():
+        return
+
     req_data = route_data[request.path]
 
     packet_size = random.randint(req_data["packet_size"][0], req_data["packet_size"][1])
@@ -114,6 +117,6 @@ if __name__ == "__main__":
     import threading
     t = threading.Thread(target=save_logs, daemon=True)
     t.start()
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=80)
 
     
